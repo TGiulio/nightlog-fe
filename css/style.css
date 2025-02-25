@@ -1,0 +1,152 @@
+/* Dark theme with red text for NightLog */
+
+/* Body and container backgrounds */
+body {
+	background-color: #000000;
+	color: #ff0000;
+}
+
+.table > :not(caption) > * > * {
+	color: #ff0000;
+}
+.container {
+	background-color: #000000;
+}
+
+/* Override Bootstrap table styles */
+.table {
+	color: #ff0000;
+}
+
+.table-striped > tbody > tr:nth-of-type(odd) {
+	background-color: #0a0a0a;
+}
+
+.table-hover tbody tr:hover {
+	background-color: #1a1a1a;
+	color: #ff3333;
+}
+
+.table-dark {
+	background-color: #0f0f0f;
+	color: #ff0000;
+}
+
+/* Modal styling */
+.modal-content {
+	background-color: #000000;
+	color: #ff0000;
+	border: 1px solid #333333;
+}
+
+.modal-header,
+.modal-footer {
+	background-color: #0f0f0f;
+	border-color: #333333;
+}
+
+.btn-close {
+	filter: invert(1) grayscale(100%) brightness(200%);
+}
+
+/* Form elements */
+.form-control,
+.form-select {
+	background-color: #0f0f0f;
+	color: #ff0000;
+	border: 1px solid #333333;
+}
+
+.form-control:focus,
+.form-select:focus {
+	background-color: #0f0f0f;
+	color: #ff0000;
+	border-color: #ff3333;
+	box-shadow: 0 0 0 0.25rem rgba(255, 0, 0, 0.25);
+}
+
+/* Button styling */
+.btn-primary {
+	background-color: #800000;
+	border-color: #600000;
+	color: #ffffff;
+}
+
+.btn-primary:hover,
+.btn-primary:focus {
+	background-color: #a00000;
+	border-color: #800000;
+}
+
+.btn-secondary {
+	background-color: #333333;
+	border-color: #222222;
+}
+
+.btn-success {
+	background-color: #003300;
+	border-color: #002200;
+	color: #ff9999;
+}
+
+.btn-success:hover,
+.btn-success:focus {
+	background-color: #004400;
+	border-color: #003300;
+}
+
+.btn-danger {
+	background-color: #660000;
+	border-color: #550000;
+}
+
+/* Other elements */
+.lead {
+	color: #ff6666;
+}
+
+.spinner-border.text-primary {
+	color: #ff0000 !important;
+}
+
+/* Custom elements from your CSS */
+.error-message {
+	color: #ff3333;
+}
+
+.welcome-container {
+	background-color: #0a0a0a;
+}
+
+/* Override any bootstrap text colors */
+.text-primary {
+	color: #ff6666 !important;
+}
+
+.text-secondary {
+	color: #ff9999 !important;
+}
+
+/* Input placeholder color */
+::placeholder {
+	color: #cc0000 !important;
+	opacity: 0.7;
+}
+
+.loading {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	min-height: 200px;
+}
+.error-message {
+	color: #dc3545;
+	margin: 20px 0;
+}
+.action-button {
+	margin-right: 5px;
+}
+.welcome-container {
+	text-align: center;
+	padding: 50px 20px;
+}
