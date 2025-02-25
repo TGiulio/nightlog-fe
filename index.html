@@ -1,0 +1,764 @@
+<!DOCTYPE html>
+<html lang="en-UK">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width" />
+		<title>NightLog</title>
+		<script src="https://cdn.jsdelivr.net/npm/oidc-client-ts@2.2.0/dist/browser/oidc-client-ts.min.js"></script>
+		<link
+			href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+			rel="stylesheet"
+			integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH"
+			crossorigin="anonymous"
+		/>
+		<script
+			src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
+			integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
+			crossorigin="anonymous"
+		></script>
+		<style>
+			.loading {
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				min-height: 200px;
+			}
+			.error-message {
+				color: #dc3545;
+				margin: 20px 0;
+			}
+			.action-button {
+				margin-right: 5px;
+			}
+			.welcome-container {
+				text-align: center;
+				padding: 50px 20px;
+			}
+		</style>
+	</head>
+	<body>
+		<div class="container mt-5">
+			<div class="row mb-4" id="title">
+				<div class="col">
+					<h1>NightLog</h1>
+					<p class="lead">Your logs list</p>
+				</div>
+			</div>
+
+			<!-- Welcome message for unauthenticated users -->
+			<div id="welcomeContainer" class="welcome-container d-none">
+				<h2>Welcome to NightLog!</h2>
+				<p class="lead">Your personal astronomy observation journal</p>
+				<p>Please sign in to view and manage your observation logs.</p>
+				<button id="welcomeSignIn" class="btn btn-lg btn-primary mt-3">
+					Sign In
+				</button>
+			</div>
+
+			<div id="errorContainer" class="error-message d-none"></div>
+
+			<div id="loadingIndicator" class="loading d-none">
+				<div class="spinner-border text-primary" role="status">
+					<span class="visually-hidden">Loading...</span>
+				</div>
+			</div>
+
+			<div id="tableContainer" class="d-none">
+				<div class="table-responsive">
+					<table class="table table-striped table-hover">
+						<thead id="tableHead" class="table-dark">
+							<!-- Headers will be dynamically inserted here -->
+						</thead>
+						<tbody id="tableBody">
+							<!-- Data rows will be dynamically inserted here -->
+						</tbody>
+					</table>
+				</div>
+
+				<!-- Add New Observation Button -->
+				<div class="text-end mb-4">
+					<button id="addObservationBtn" class="btn btn-success">
+						<i class="bi bi-plus-circle"></i> Add New Observation
+					</button>
+				</div>
+			</div>
+		</div>
+
+		<!-- Edit Modal -->
+		<div
+			class="modal fade"
+			id="editModal"
+			tabindex="-1"
+			aria-labelledby="editModalLabel"
+			aria-hidden="true"
+		>
+			<div class="modal-dialog modal-lg">
+				<div class="modal-content">
+					<div class="modal-header">
+						<h5 class="modal-title" id="editModalLabel">Edit Log</h5>
+						<button
+							type="button"
+							class="btn-close"
+							data-bs-dismiss="modal"
+							aria-label="Close"
+						></button>
+					</div>
+					<div class="modal-body">
+						<form id="editForm">
+							<input type="hidden" id="logId" name="logId" />
+							<div class="mb-3">
+								<label for="logDate" class="form-label">Date</label>
+								<input
+									type="datetime-local"
+									class="form-control"
+									id="logDate"
+									name="date"
+								/>
+							</div>
+							<div class="mb-3">
+								<label for="logObject" class="form-label">Object</label>
+								<input
+									type="text"
+									class="form-control"
+									id="logObject"
+									name="object"
+								/>
+							</div>
+							<div class="mb-3">
+								<label for="logLocation" class="form-label"
+									>Object Location</label
+								>
+								<input
+									type="text"
+									class="form-control"
+									id="logLocation"
+									name="location"
+								/>
+							</div>
+							<div id="additionalFields">
+								<!-- Additional fields will be added dynamically -->
+							</div>
+						</form>
+					</div>
+					<div class="modal-footer">
+						<button type="button" class="btn btn-danger" id="deleteLogBtn">
+							Delete Log
+						</button>
+						<button
+							type="button"
+							class="btn btn-secondary"
+							data-bs-dismiss="modal"
+						>
+							Cancel
+						</button>
+						<button type="button" class="btn btn-primary" id="saveChangesBtn">
+							Save Changes
+						</button>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<!-- Add New Observation Modal -->
+		<div
+			class="modal fade"
+			id="addObservationModal"
+			tabindex="-1"
+			aria-labelledby="addObservationModalLabel"
+			aria-hidden="true"
+		>
+			<div class="modal-dialog modal-lg">
+				<div class="modal-content">
+					<div class="modal-header">
+						<h5 class="modal-title" id="addObservationModalLabel">
+							Add New Observation
+						</h5>
+						<button
+							type="button"
+							class="btn-close"
+							data-bs-dismiss="modal"
+							aria-label="Close"
+						></button>
+					</div>
+					<div class="modal-body">
+						<form id="addObservationForm">
+							<div class="mb-3">
+								<label for="newLogDate" class="form-label">Date</label>
+								<input
+									type="datetime-local"
+									class="form-control"
+									id="newLogDate"
+									name="date"
+									required
+								/>
+							</div>
+							<div class="mb-3">
+								<label for="newLogObject" class="form-label">Object Name</label>
+								<input
+									type="text"
+									class="form-control"
+									id="newLogObject"
+									name="object"
+									required
+								/>
+							</div>
+							<div class="mb-3">
+								<label for="newLogLocation" class="form-label"
+									>Object Location</label
+								>
+								<input
+									type="text"
+									class="form-control"
+									id="newLogLocation"
+									name="location"
+									required
+								/>
+							</div>
+							<div class="mb-3">
+								<label for="newLogEquipment" class="form-label"
+									>Equipment</label
+								>
+								<input
+									type="text"
+									class="form-control"
+									id="newLogEquipment"
+									name="equipment"
+								/>
+							</div>
+							<div class="mb-3">
+								<label for="newLogEyepiece" class="form-label">Eyepiece</label>
+								<input
+									type="text"
+									class="form-control"
+									id="newLogEyepiece"
+									name="eyepiece"
+								/>
+							</div>
+							<div class="mb-3">
+								<label for="newLogNotes" class="form-label">Notes</label>
+								<textarea
+									class="form-control"
+									id="newLogNotes"
+									name="notes"
+									rows="4"
+								></textarea>
+							</div>
+						</form>
+					</div>
+					<div class="modal-footer">
+						<button
+							type="button"
+							class="btn btn-secondary"
+							data-bs-dismiss="modal"
+						>
+							Cancel
+						</button>
+						<button
+							type="button"
+							class="btn btn-primary"
+							id="saveNewObservationBtn"
+						>
+							Save Observation
+						</button>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<script>
+			document.addEventListener('DOMContentLoaded', () => {
+				// Get elements
+				const tableContainer = document.getElementById('tableContainer');
+				const tableHead = document.getElementById('tableHead');
+				const tableBody = document.getElementById('tableBody');
+				const loadingIndicator = document.getElementById('loadingIndicator');
+				const errorContainer = document.getElementById('errorContainer');
+				const welcomeContainer = document.getElementById('welcomeContainer');
+				const editModal = new bootstrap.Modal(
+					document.getElementById('editModal')
+				);
+				const addObservationModal = new bootstrap.Modal(
+					document.getElementById('addObservationModal')
+				);
+				const editForm = document.getElementById('editForm');
+				const additionalFields = document.getElementById('additionalFields');
+				const saveChangesBtn = document.getElementById('saveChangesBtn');
+				const deleteLogBtn = document.getElementById('deleteLogBtn');
+				const addObservationBtn = document.getElementById('addObservationBtn');
+				const saveNewObservationBtn = document.getElementById(
+					'saveNewObservationBtn'
+				);
+				const title = document.getElementById('title');
+				const welcomeSignInBtn = document.getElementById('welcomeSignIn');
+
+				// Store original response data
+				let originalResponseData = [];
+
+				// Check if user is authenticated
+				if (window.localStorage.getItem('id_token')) {
+					fetchData();
+				} else {
+					// Show welcome message for unauthenticated users
+					title.classList.add('d-none');
+					welcomeContainer.classList.remove('d-none');
+					tableContainer.classList.add('d-none');
+				}
+
+				// Welcome sign in button event listener
+				welcomeSignInBtn.addEventListener('click', async () => {
+					if (typeof userManager !== 'undefined') {
+						await userManager.signinRedirect();
+					} else {
+						console.error('userManager is not defined');
+					}
+				});
+
+				function fetchData() {
+					// define API URL
+					const apiUrl =
+						'https://hqegqltt4c.execute-api.eu-central-1.amazonaws.com/v1/list';
+
+					// Show loading indicator
+					loadingIndicator.classList.remove('d-none');
+					tableContainer.classList.add('d-none');
+					errorContainer.classList.add('d-none');
+					welcomeContainer.classList.add('d-none');
+
+					// Make the AJAX request
+					fetch(apiUrl, {
+						method: 'POST',
+						headers: {
+							Authorization: `Bearer ${window.localStorage.getItem(
+								'id_token'
+							)}`,
+							'Content-Type': 'application/json'
+						},
+						body: JSON.stringify({
+							user_id: window.localStorage.getItem('user_sub')
+						})
+					})
+						.then((response) => {
+							if (!response.ok) {
+								if (response.status === 401) {
+									throw new Error('Unauthorized. Please sign in again.');
+								}
+								throw new Error(`HTTP error! Status: ${response.status}`);
+							}
+							return response.json();
+						})
+						.then((data) => {
+							// Store original response data
+							originalResponseData = JSON.parse(data.body);
+							// Process and display the data
+							displayData(extractInfo(originalResponseData));
+						})
+						.catch((error) => {
+							if (error.message.includes('Unauthorized')) {
+								// Clear any existing tokens
+								window.localStorage.removeItem('id_token');
+								window.localStorage.removeItem('refresh_token');
+								// Show welcome message
+								welcomeContainer.classList.remove('d-none');
+							} else {
+								showError(`Error fetching data: ${error.message}`);
+							}
+						})
+						.finally(() => {
+							// Hide loading indicator
+							loadingIndicator.classList.add('d-none');
+						});
+				}
+
+				function displayData(data) {
+					// Clear previous data
+					tableHead.innerHTML = '';
+					tableBody.innerHTML = '';
+
+					// Check if data is an array
+					if (!Array.isArray(data)) {
+						if (typeof data === 'object') {
+							// Convert object to array if it's not already
+							data = [data];
+						} else {
+							showError('Invalid data format received');
+							return;
+						}
+					}
+
+					if (data.length === 0) {
+						tableContainer.classList.remove('d-none');
+						tableHead.innerHTML =
+							'<tr><th>Date</th><th>Object</th><th>Location</th><th>Actions</th></tr>';
+						tableBody.innerHTML =
+							'<tr><td colspan="4" class="text-center">No observations found. Add your first observation!</td></tr>';
+						return;
+					}
+
+					// Create table headers based on the properties of the first data item
+					const headerRow = document.createElement('tr');
+					Object.keys(data[0]).forEach((key) => {
+						const th = document.createElement('th');
+						th.textContent = key.charAt(0).toUpperCase() + key.slice(1); // Capitalize first letter
+						headerRow.appendChild(th);
+					});
+
+					// Add Actions column header
+					const actionsHeader = document.createElement('th');
+					actionsHeader.textContent = 'Actions';
+					headerRow.appendChild(actionsHeader);
+
+					tableHead.appendChild(headerRow);
+
+					// Create table rows
+					data.forEach((item, index) => {
+						const row = document.createElement('tr');
+						row.dataset.index = index; // Store the index for reference
+
+						Object.values(item).forEach((value) => {
+							const td = document.createElement('td');
+							// Handle different value types
+							if (typeof value === 'object' && value !== null) {
+								td.textContent = JSON.stringify(value);
+							} else {
+								td.textContent = value;
+							}
+							row.appendChild(td);
+						});
+
+						// Add edit button
+						const actionsTd = document.createElement('td');
+						const editButton = document.createElement('button');
+						editButton.textContent = 'Edit';
+						editButton.className = 'btn btn-sm btn-primary action-button';
+						editButton.addEventListener('click', () => openEditModal(index));
+						actionsTd.appendChild(editButton);
+						row.appendChild(actionsTd);
+
+						tableBody.appendChild(row);
+					});
+
+					// Show the table
+					tableContainer.classList.remove('d-none');
+				}
+
+				// Function to open the edit modal
+				function openEditModal(index) {
+					const originalItem = originalResponseData[index];
+					const currentItem = extractInfo([originalItem])[0];
+
+					// Clear the form
+					editForm.reset();
+					additionalFields.innerHTML = '';
+
+					// Set the log ID
+					document.getElementById('logId').value = index;
+
+					// Format date for datetime-local input
+					const logDate = new Date(originalItem.date * 1000);
+					const formattedDate = logDate.toISOString().slice(0, 16);
+					document.getElementById('logDate').value = formattedDate;
+
+					// Set other known fields
+					document.getElementById('logObject').value =
+						originalItem.observation.object_name;
+					document.getElementById('logLocation').value =
+						originalItem.observation.object_location;
+
+					// Add all fields from the observation object except the ones we already handled
+					for (const [key, value] of Object.entries(originalItem.observation)) {
+						if (key !== 'object_name' && key !== 'object_location') {
+							addFormField(`observation.${key}`, value);
+						}
+					}
+
+					// Show the modal
+					editModal.show();
+				}
+
+				// Function to add a form field dynamically
+				function addFormField(key, value) {
+					const div = document.createElement('div');
+					div.className = 'mb-3';
+
+					const label = document.createElement('label');
+					label.className = 'form-label';
+					label.textContent =
+						key.charAt(0).toUpperCase() + key.replace(/\./g, ' ').slice(1);
+					label.setAttribute('for', `field_${key.replace(/\./g, '_')}`);
+
+					let input;
+					if (typeof value === 'boolean') {
+						input = document.createElement('select');
+						const optionTrue = document.createElement('option');
+						optionTrue.value = 'true';
+						optionTrue.textContent = 'True';
+						optionTrue.selected = value;
+
+						const optionFalse = document.createElement('option');
+						optionFalse.value = 'false';
+						optionFalse.textContent = 'False';
+						optionFalse.selected = !value;
+
+						input.appendChild(optionTrue);
+						input.appendChild(optionFalse);
+					} else if (
+						(typeof value === 'object' && value !== null) ||
+						key == 'observation.notes'
+					) {
+						input = document.createElement('textarea');
+						input.value = JSON.stringify(value, null, 2);
+					} else {
+						input = document.createElement('input');
+						input.type = typeof value === 'number' ? 'number' : 'text';
+						input.value = value;
+					}
+
+					input.className = 'form-control';
+					input.id = `field_${key.replace(/\./g, '_')}`;
+					input.name = key;
+
+					div.appendChild(label);
+					div.appendChild(input);
+					additionalFields.appendChild(div);
+				}
+
+				// Handle save changes
+				saveChangesBtn.addEventListener('click', () => {
+					const index = document.getElementById('logId').value;
+					const formData = new FormData(editForm);
+					const updatedData = { ...originalResponseData[index] };
+
+					// Update the basic fields
+					const dateValue = new Date(formData.get('date')).getTime() / 1000;
+					updatedData.date = dateValue;
+					updatedData.observation.object_name = formData.get('object');
+					updatedData.observation.object_location = formData.get('location');
+
+					// Update additional fields
+					for (const [key, value] of formData.entries()) {
+						if (!['logId', 'date', 'object', 'location'].includes(key)) {
+							if (key.startsWith('observation.')) {
+								const obsKey = key.replace('observation.', '');
+								let parsedValue = value;
+
+								// Try to parse numbers and booleans
+								if (value === 'true') parsedValue = true;
+								else if (value === 'false') parsedValue = false;
+								else if (!isNaN(value) && value !== '')
+									parsedValue = Number(value);
+
+								updatedData.observation[obsKey] = parsedValue;
+							} else {
+								let parsedValue = value;
+
+								// Try to parse numbers and booleans
+								if (value === 'true') parsedValue = true;
+								else if (value === 'false') parsedValue = false;
+								else if (!isNaN(value) && value !== '')
+									parsedValue = Number(value);
+
+								updatedData[key] = parsedValue;
+							}
+						}
+					}
+
+					// Here we would typically send the updated data to the server
+					let body = JSON.stringify(updatedData);
+
+					// API call to update
+
+					const apiUrl =
+						'https://hqegqltt4c.execute-api.eu-central-1.amazonaws.com/v1/modify';
+					fetch(apiUrl, {
+						method: 'POST',
+						headers: {
+							Authorization: `Bearer ${window.localStorage.getItem(
+								'id_token'
+							)}`,
+							'Content-Type': 'application/json'
+						},
+						body: body
+					})
+						.then((response) => {
+							if (!response.ok) {
+								throw new Error(`HTTP error! Status: ${response.status}`);
+							}
+							return response.json();
+						})
+						.then((data) => {
+							// Update local data and UI
+							fetchData();
+							editModal.hide();
+						})
+						.catch((error) => {
+							showError(`Error updating data: ${error.message}`);
+						});
+				});
+
+				// Handle delete log
+				deleteLogBtn.addEventListener('click', () => {
+					const index = document.getElementById('logId').value;
+
+					if (confirm('Are you sure you want to delete this log?')) {
+						let body = JSON.stringify({
+							user_id: window.localStorage.getItem('user_sub'),
+							log_id: originalResponseData[index]._id //
+						});
+						//  API call to delete
+
+						const apiUrl =
+							'https://hqegqltt4c.execute-api.eu-central-1.amazonaws.com/v1/delete';
+						fetch(apiUrl, {
+							method: 'POST',
+							headers: {
+								Authorization: `Bearer ${window.localStorage.getItem(
+									'id_token'
+								)}`,
+								'Content-Type': 'application/json'
+							},
+							body: body
+						})
+							.then((response) => {
+								if (!response.ok) {
+									throw new Error(`HTTP error! Status: ${response.status}`);
+								}
+								return response.json();
+							})
+							.then((data) => {
+								// Update local data and UI
+								fetchData();
+								editModal.hide();
+							})
+							.catch((error) => {
+								showError(`Error deleting data: ${error.message}`);
+							});
+					}
+				});
+
+				// Add New Observation button event listener
+				addObservationBtn.addEventListener('click', () => {
+					// Set default date to current date and time
+					const now = new Date();
+					const formattedNow = now.toISOString().slice(0, 16);
+					document.getElementById('newLogDate').value = formattedNow;
+
+					// Clear the form fields
+					document.getElementById('newLogObject').value = '';
+					document.getElementById('newLogLocation').value = '';
+					document.getElementById('newLogEquipment').value = '';
+					document.getElementById('newLogEyepiece').value = '';
+					document.getElementById('newLogNotes').value = '';
+
+					// Show the modal
+					addObservationModal.show();
+				});
+
+				// Save New Observation button event listener
+				saveNewObservationBtn.addEventListener('click', () => {
+					// Get form values
+					const newDate = document.getElementById('newLogDate').value;
+					const newObject = document.getElementById('newLogObject').value;
+					const newLocation = document.getElementById('newLogLocation').value;
+					const newEquipment = document.getElementById('newLogEquipment').value;
+					const newEyepiece = document.getElementById('newLogEyepiece').value;
+					const newNotes = document.getElementById('newLogNotes').value;
+
+					// Validate required fields
+					if (!newDate || !newObject) {
+						alert('Please fill in all required fields.');
+						return;
+					}
+
+					// Create new observation object
+					const newObservation = {
+						user_id: window.localStorage.getItem('user_sub'),
+						object_name: newObject,
+						object_location: newLocation,
+						equipment: newEquipment,
+						eyepiece: newEyepiece,
+						notes: newNotes
+					};
+
+					let body = JSON.stringify(newObservation);
+
+					//  API call to create new observation
+					const apiUrl =
+						'https://hqegqltt4c.execute-api.eu-central-1.amazonaws.com/v1/insert';
+					fetch(apiUrl, {
+						method: 'POST',
+						headers: {
+							Authorization: `Bearer ${window.localStorage.getItem(
+								'id_token'
+							)}`,
+							'Content-Type': 'application/json'
+						},
+						body: body
+					})
+						.then((response) => {
+							if (!response.ok) {
+								throw new Error(`HTTP error! Status: ${response.status}`);
+							}
+							return response.json();
+						})
+						.then((data) => {
+							// Add to local data and refresh UI
+							fetchData();
+							addObservationModal.hide();
+						})
+						.catch((error) => {
+							showError(`Error creating observation: ${error.message}`);
+						});
+				});
+
+				function showError(message) {
+					errorContainer.textContent = message;
+					errorContainer.classList.remove('d-none');
+					tableContainer.classList.add('d-none');
+					loadingIndicator.classList.add('d-none');
+					welcomeContainer.classList.add('d-none');
+				}
+
+				function extractInfo(response_body) {
+					let info_array = [];
+					for (let item of response_body) {
+						let obs = {};
+						obs.date = new Date(item.date * 1000).toLocaleString();
+						obs.object = item.observation.object_name;
+						obs.object_location = item.observation.object_location;
+						info_array.push(obs);
+					}
+					return info_array;
+				}
+			});
+		</script>
+
+		<script type="module">
+			import { userManager } from './main.js';
+			document
+				.getElementById('welcomeSignIn')
+				.addEventListener('click', async () => {
+					await userManager.signinRedirect();
+				});
+		</script>
+
+		<script type="module">
+			import { userManager } from './main.js';
+			import { parseJwt } from './main.js';
+
+			userManager
+				.signinCallback()
+				.then(function (user) {
+					window.localStorage.setItem('id_token', user.id_token);
+					window.localStorage.setItem('refresh_token', user.refresh_token);
+					window.localStorage.setItem('user_email', user.profile?.email);
+					let user_sub = parseJwt(user.id_token).sub;
+					window.localStorage.setItem('user_sub', user_sub);
+					// Refresh the page to load data after login
+					window.location.reload();
+				})
+				.catch(function (error) {
+					console.log('Sign-in callback error:', error);
+				});
+		</script>
+	</body>
+</html>
